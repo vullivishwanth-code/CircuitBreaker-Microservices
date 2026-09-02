@@ -1,121 +1,254 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
 import './App.css'
 
+const services = [
+  {
+    name: 'API Gateway',
+    port: '8080',
+    description: 'Single entry point for client requests',
+    icon: '⇄',
+  },
+  {
+    name: 'Service Registry',
+    port: '8761',
+    description: 'Eureka service discovery',
+    icon: '◎',
+  },
+  {
+    name: 'Product Service',
+    port: '8081',
+    description: 'Product information and aggregation',
+    icon: '▣',
+  },
+  {
+    name: 'Inventory Service',
+    port: '8082',
+    description: 'Product inventory availability',
+    icon: '▤',
+  },
+  {
+    name: 'Recommendation Service',
+    port: '8083',
+    description: 'Product recommendations',
+    icon: '◇',
+  },
+]
+
+const resiliencePatterns = [
+  {
+    title: 'Circuit Breaker',
+    value: 'CLOSED',
+    description: 'Protects services from cascading failures',
+  },
+  {
+    title: 'Rate Limiter',
+    value: '5 / 10 sec',
+    description: 'Controls excessive incoming requests',
+  },
+  {
+    title: 'Bulkhead',
+    value: '3 concurrent',
+    description: 'Isolates concurrent service requests',
+  },
+  {
+    title: 'Time Limiter',
+    value: '3 seconds',
+    description: 'Stops requests that take too long',
+  },
+]
+
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-icon">CB</div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+          <div>
+            <h2>ResilienceHub</h2>
+            <span>Microservices Monitor</span>
+          </div>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        <nav className="navigation">
+          <a className="nav-item active" href="#overview">
+            <span>▦</span>
+            Overview
+          </a>
+
+          <a className="nav-item" href="#services">
+            <span>◫</span>
+            Services
+          </a>
+
+          <a className="nav-item" href="#resilience">
+            <span>⌁</span>
+            Resilience
+          </a>
+
+          <a className="nav-item" href="#requests">
+            <span>↗</span>
+            Requests
+          </a>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="environment-dot"></div>
+
+          <div>
+            <strong>Local Environment</strong>
+            <span>Spring Boot + React</span>
+          </div>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">MICROSERVICES RELIABILITY PLATFORM</p>
+            <h1>Circuit Breaker Dashboard</h1>
+          </div>
+
+          <div className="system-status">
+            <span className="status-dot"></span>
+            System Ready
+          </div>
+        </header>
+
+        <section className="hero-section" id="overview">
+          <div>
+            <span className="section-label">SYSTEM OVERVIEW</span>
+
+            <h2>
+              Resilient microservices.
+              <br />
+              Visible in one place.
+            </h2>
+
+            <p>
+              Monitor the Spring Boot microservices architecture and demonstrate
+              circuit breakers, rate limiting, bulkhead isolation and timeout
+              protection from a single dashboard.
+            </p>
+
+            <div className="hero-actions">
+              <button className="primary-button">Run Health Check</button>
+              <button className="secondary-button">Send Test Request</button>
+            </div>
+          </div>
+
+          <div className="architecture-preview">
+            <div className="architecture-title">
+              <span>Architecture</span>
+              <small>LOCAL</small>
+            </div>
+
+            <div className="architecture-flow">
+              <div className="architecture-node client">Client</div>
+              <span className="flow-arrow">↓</span>
+              <div className="architecture-node gateway">API Gateway :8080</div>
+              <span className="flow-arrow">↓</span>
+
+              <div className="service-flow">
+                <div className="architecture-node">Product</div>
+                <div className="architecture-node">Inventory</div>
+                <div className="architecture-node">Recommendation</div>
+              </div>
+
+              <span className="flow-arrow">↓</span>
+              <div className="architecture-node registry">
+                Eureka Registry :8761
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="dashboard-section" id="services">
+          <div className="section-heading">
+            <div>
+              <span className="section-label">INFRASTRUCTURE</span>
+              <h2>Microservices</h2>
+            </div>
+
+            <span className="service-count">{services.length} services</span>
+          </div>
+
+          <div className="services-grid">
+            {services.map((service) => (
+              <article className="service-card" key={service.name}>
+                <div className="service-card-top">
+                  <div className="service-icon">{service.icon}</div>
+
+                  <span className="service-status">
+                    <span></span>
+                    CONFIGURED
+                  </span>
+                </div>
+
+                <h3>{service.name}</h3>
+                <p>{service.description}</p>
+
+                <div className="service-meta">
+                  <span>PORT</span>
+                  <strong>{service.port}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="dashboard-section" id="resilience">
+          <div className="section-heading">
+            <div>
+              <span className="section-label">RESILIENCE4J</span>
+              <h2>Resilience Patterns</h2>
+            </div>
+          </div>
+
+          <div className="resilience-grid">
+            {resiliencePatterns.map((pattern) => (
+              <article className="resilience-card" key={pattern.title}>
+                <div className="pattern-header">
+                  <h3>{pattern.title}</h3>
+                  <span>●</span>
+                </div>
+
+                <strong>{pattern.value}</strong>
+                <p>{pattern.description}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="dashboard-section" id="requests">
+          <div className="section-heading">
+            <div>
+              <span className="section-label">TESTING</span>
+              <h2>Request Console</h2>
+            </div>
+          </div>
+
+          <div className="request-console">
+            <div>
+              <span className="request-method">GET</span>
+              <code>/api/products/1/details</code>
+            </div>
+
+            <button className="primary-button">Send Request</button>
+          </div>
+
+          <div className="response-placeholder">
+            <span>RESPONSE</span>
+            <p>
+              Request results will appear here when API integration is enabled.
+            </p>
+          </div>
+        </section>
+
+        <footer>
+          CircuitBreaker Microservices • Spring Boot • React • Resilience4j
+        </footer>
+      </main>
+    </div>
   )
 }
 
