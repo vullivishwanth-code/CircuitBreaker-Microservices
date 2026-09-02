@@ -3,34 +3,44 @@ import './App.css'
 
 const services = [
   {
+    key: 'gateway',
     name: 'API Gateway',
     port: '8080',
     description: 'Single entry point for client requests',
     icon: '⇄',
+    healthPath: '/health/gateway/api/products/1/details',
   },
   {
+    key: 'registry',
     name: 'Service Registry',
     port: '8761',
     description: 'Eureka service discovery',
     icon: '◎',
+    healthPath: '/health/registry/',
   },
   {
+    key: 'product',
     name: 'Product Service',
     port: '8081',
     description: 'Product information and aggregation',
     icon: '▣',
+    healthPath: '/health/product/api/products/1',
   },
   {
+    key: 'inventory',
     name: 'Inventory Service',
     port: '8082',
     description: 'Product inventory availability',
     icon: '▤',
+    healthPath: '/health/inventory/api/inventory/1',
   },
   {
+    key: 'recommendation',
     name: 'Recommendation Service',
     port: '8083',
     description: 'Product recommendations',
     icon: '◇',
+    healthPath: '/health/recommendation/api/recommendations/1',
   },
 ]
 
@@ -62,6 +72,16 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  const [healthChecking, setHealthChecking] = useState(false)
+
+  const [serviceHealth, setServiceHealth] = useState({
+    gateway: 'UNKNOWN',
+    registry: 'UNKNOWN',
+    product: 'UNKNOWN',
+    inventory: 'UNKNOWN',
+    recommendation: 'UNKNOWN',
+  })
+
   const sendRequest = async () => {
     setLoading(true)
     setError(null)
@@ -74,6 +94,7 @@ function App() {
       }
 
       const data = await result.json()
+
       setResponse(data)
     } catch (err) {
       setResponse(null)
@@ -81,6 +102,76 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const checkService = async (service) => {
+    try {
+      const result = await fetch(service.healthPath)
+
+      if (result.ok) {
+        return 'UP'
+      }
+
+      return 'DOWN'
+    } catch {
+      return 'DOWN'
+    }
+  }
+
+  const runHealthCheck = async () => {
+    setHealthChecking(true)
+
+    const checkingState = {}
+
+    services.forEach((service) => {
+      checkingState[service.key] = 'CHECKING'
+    })
+
+    setServiceHealth(checkingState)
+
+    const results = await Promise.all(
+      services.map(async (service) => {
+        const status = await checkService(service)
+
+        return {
+          key: service.key,
+          status,
+        }
+      }),
+    )
+
+    const updatedHealth = {}
+
+    results.forEach((result) => {
+      updatedHealth[result.key] = result.status
+    })
+
+    setServiceHealth(updatedHealth)
+    setHealthChecking(false)
+  }
+
+  const allServicesUp = services.every(
+    (service) => serviceHealth[service.key] === 'UP',
+  )
+
+  const hasDownService = services.some(
+    (service) => serviceHealth[service.key] === 'DOWN',
+  )
+
+  const getSystemStatus = () => {
+    if (healthChecking) {
+      return 'Checking Services'
+    }
+
+    if (allServicesUp) {
+      return 'All Systems Operational'
+    }
+
+    if (hasDownService) {
+      return 'Service Issue Detected'
+    }
+
+    return 'System Ready'
   }
 
   return (
@@ -118,7 +209,11 @@ function App() {
         </nav>
 
         <div className="sidebar-footer">
-          <div className="environment-dot"></div>
+          <div
+            className={`environment-dot ${
+              hasDownService ? 'environment-down' : ''
+            }`}
+          ></div>
 
           <div>
             <strong>Local Environment</strong>
@@ -130,19 +225,33 @@ function App() {
       <main className="main-content">
         <header className="topbar">
           <div>
-            <p className="eyebrow">MICROSERVICES RELIABILITY PLATFORM</p>
+            <p className="eyebrow">
+              MICROSERVICES RELIABILITY PLATFORM
+            </p>
+
             <h1>Circuit Breaker Dashboard</h1>
           </div>
 
-          <div className="system-status">
-            <span className="status-dot"></span>
-            System Ready
+          <div
+            className={`system-status ${
+              hasDownService ? 'system-status-error' : ''
+            }`}
+          >
+            <span
+              className={`status-dot ${
+                hasDownService ? 'status-dot-error' : ''
+              }`}
+            ></span>
+
+            {getSystemStatus()}
           </div>
         </header>
 
         <section className="hero-section" id="overview">
           <div>
-            <span className="section-label">SYSTEM OVERVIEW</span>
+            <span className="section-label">
+              SYSTEM OVERVIEW
+            </span>
 
             <h2>
               Resilient microservices.
@@ -151,19 +260,31 @@ function App() {
             </h2>
 
             <p>
-              Monitor the Spring Boot microservices architecture and demonstrate
-              circuit breakers, rate limiting, bulkhead isolation and timeout
-              protection from a single dashboard.
+              Monitor the Spring Boot microservices architecture
+              and demonstrate circuit breakers, rate limiting,
+              bulkhead isolation and timeout protection from a
+              single dashboard.
             </p>
 
             <div className="hero-actions">
-              <button className="primary-button">Run Health Check</button>
+              <button
+                className="primary-button"
+                onClick={runHealthCheck}
+                disabled={healthChecking}
+              >
+                {healthChecking
+                  ? 'Checking...'
+                  : 'Run Health Check'}
+              </button>
 
               <button
                 className="secondary-button"
                 onClick={sendRequest}
+                disabled={loading}
               >
-                Send Test Request
+                {loading
+                  ? 'Sending...'
+                  : 'Send Test Request'}
               </button>
             </div>
           </div>
@@ -175,7 +296,9 @@ function App() {
             </div>
 
             <div className="architecture-flow">
-              <div className="architecture-node client">Client</div>
+              <div className="architecture-node client">
+                Client
+              </div>
 
               <span className="flow-arrow">↓</span>
 
@@ -186,9 +309,17 @@ function App() {
               <span className="flow-arrow">↓</span>
 
               <div className="service-flow">
-                <div className="architecture-node">Product</div>
-                <div className="architecture-node">Inventory</div>
-                <div className="architecture-node">Recommendation</div>
+                <div className="architecture-node">
+                  Product
+                </div>
+
+                <div className="architecture-node">
+                  Inventory
+                </div>
+
+                <div className="architecture-node">
+                  Recommendation
+                </div>
               </div>
 
               <span className="flow-arrow">↓</span>
@@ -200,10 +331,16 @@ function App() {
           </div>
         </section>
 
-        <section className="dashboard-section" id="services">
+        <section
+          className="dashboard-section"
+          id="services"
+        >
           <div className="section-heading">
             <div>
-              <span className="section-label">INFRASTRUCTURE</span>
+              <span className="section-label">
+                INFRASTRUCTURE
+              </span>
+
               <h2>Microservices</h2>
             </div>
 
@@ -213,33 +350,49 @@ function App() {
           </div>
 
           <div className="services-grid">
-            {services.map((service) => (
-              <article className="service-card" key={service.name}>
-                <div className="service-card-top">
-                  <div className="service-icon">
-                    {service.icon}
+            {services.map((service) => {
+              const status = serviceHealth[service.key]
+
+              return (
+                <article
+                  className="service-card"
+                  key={service.name}
+                >
+                  <div className="service-card-top">
+                    <div className="service-icon">
+                      {service.icon}
+                    </div>
+
+                    <span
+                      className={`service-status ${status.toLowerCase()}`}
+                    >
+                      <span></span>
+
+                      {status}
+                    </span>
                   </div>
 
-                  <span className="service-status">
-                    <span></span>
-                    CONFIGURED
-                  </span>
-                </div>
+                  <h3>{service.name}</h3>
 
-                <h3>{service.name}</h3>
+                  <p>{service.description}</p>
 
-                <p>{service.description}</p>
+                  <div className="service-meta">
+                    <span>PORT</span>
 
-                <div className="service-meta">
-                  <span>PORT</span>
-                  <strong>{service.port}</strong>
-                </div>
-              </article>
-            ))}
+                    <strong>
+                      {service.port}
+                    </strong>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         </section>
 
-        <section className="dashboard-section" id="resilience">
+        <section
+          className="dashboard-section"
+          id="resilience"
+        >
           <div className="section-heading">
             <div>
               <span className="section-label">
@@ -261,27 +414,41 @@ function App() {
                   <span>●</span>
                 </div>
 
-                <strong>{pattern.value}</strong>
+                <strong>
+                  {pattern.value}
+                </strong>
 
-                <p>{pattern.description}</p>
+                <p>
+                  {pattern.description}
+                </p>
               </article>
             ))}
           </div>
         </section>
 
-        <section className="dashboard-section" id="requests">
+        <section
+          className="dashboard-section"
+          id="requests"
+        >
           <div className="section-heading">
             <div>
-              <span className="section-label">TESTING</span>
+              <span className="section-label">
+                TESTING
+              </span>
+
               <h2>Request Console</h2>
             </div>
           </div>
 
           <div className="request-console">
             <div>
-              <span className="request-method">GET</span>
+              <span className="request-method">
+                GET
+              </span>
 
-              <code>/api/products/1/details</code>
+              <code>
+                /api/products/1/details
+              </code>
             </div>
 
             <button
@@ -289,7 +456,9 @@ function App() {
               onClick={sendRequest}
               disabled={loading}
             >
-              {loading ? 'Sending...' : 'Send Request'}
+              {loading
+                ? 'Sending...'
+                : 'Send Request'}
             </button>
           </div>
 
@@ -297,29 +466,41 @@ function App() {
             <span>RESPONSE</span>
 
             {loading && (
-              <p>Sending request to API Gateway...</p>
+              <p>
+                Sending request to API Gateway...
+              </p>
             )}
 
             {error && (
-              <p>ERROR: {error}</p>
+              <p className="response-error">
+                ERROR: {error}
+              </p>
             )}
 
             {response && (
               <pre>
-                {JSON.stringify(response, null, 2)}
+                {JSON.stringify(
+                  response,
+                  null,
+                  2,
+                )}
               </pre>
             )}
 
-            {!loading && !error && !response && (
-              <p>
-                Click Send Request to test the API Gateway.
-              </p>
-            )}
+            {!loading &&
+              !error &&
+              !response && (
+                <p>
+                  Click Send Request to test
+                  the API Gateway.
+                </p>
+              )}
           </div>
         </section>
 
         <footer>
-          CircuitBreaker Microservices • Spring Boot • React • Resilience4j
+          CircuitBreaker Microservices • Spring Boot • React •
+          Resilience4j
         </footer>
       </main>
     </div>
