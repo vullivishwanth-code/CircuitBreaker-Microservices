@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import './App.css'
 
 const services = [
@@ -57,6 +58,31 @@ const resiliencePatterns = [
 ]
 
 function App() {
+  const [response, setResponse] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  const sendRequest = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const result = await fetch('/api/products/1/details')
+
+      if (!result.ok) {
+        throw new Error(`Request failed with HTTP ${result.status}`)
+      }
+
+      const data = await result.json()
+      setResponse(data)
+    } catch (err) {
+      setResponse(null)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -132,7 +158,13 @@ function App() {
 
             <div className="hero-actions">
               <button className="primary-button">Run Health Check</button>
-              <button className="secondary-button">Send Test Request</button>
+
+              <button
+                className="secondary-button"
+                onClick={sendRequest}
+              >
+                Send Test Request
+              </button>
             </div>
           </div>
 
@@ -144,8 +176,13 @@ function App() {
 
             <div className="architecture-flow">
               <div className="architecture-node client">Client</div>
+
               <span className="flow-arrow">↓</span>
-              <div className="architecture-node gateway">API Gateway :8080</div>
+
+              <div className="architecture-node gateway">
+                API Gateway :8080
+              </div>
+
               <span className="flow-arrow">↓</span>
 
               <div className="service-flow">
@@ -155,6 +192,7 @@ function App() {
               </div>
 
               <span className="flow-arrow">↓</span>
+
               <div className="architecture-node registry">
                 Eureka Registry :8761
               </div>
@@ -169,14 +207,18 @@ function App() {
               <h2>Microservices</h2>
             </div>
 
-            <span className="service-count">{services.length} services</span>
+            <span className="service-count">
+              {services.length} services
+            </span>
           </div>
 
           <div className="services-grid">
             {services.map((service) => (
               <article className="service-card" key={service.name}>
                 <div className="service-card-top">
-                  <div className="service-icon">{service.icon}</div>
+                  <div className="service-icon">
+                    {service.icon}
+                  </div>
 
                   <span className="service-status">
                     <span></span>
@@ -185,6 +227,7 @@ function App() {
                 </div>
 
                 <h3>{service.name}</h3>
+
                 <p>{service.description}</p>
 
                 <div className="service-meta">
@@ -199,20 +242,27 @@ function App() {
         <section className="dashboard-section" id="resilience">
           <div className="section-heading">
             <div>
-              <span className="section-label">RESILIENCE4J</span>
+              <span className="section-label">
+                RESILIENCE4J
+              </span>
+
               <h2>Resilience Patterns</h2>
             </div>
           </div>
 
           <div className="resilience-grid">
             {resiliencePatterns.map((pattern) => (
-              <article className="resilience-card" key={pattern.title}>
+              <article
+                className="resilience-card"
+                key={pattern.title}
+              >
                 <div className="pattern-header">
                   <h3>{pattern.title}</h3>
                   <span>●</span>
                 </div>
 
                 <strong>{pattern.value}</strong>
+
                 <p>{pattern.description}</p>
               </article>
             ))}
@@ -230,17 +280,41 @@ function App() {
           <div className="request-console">
             <div>
               <span className="request-method">GET</span>
+
               <code>/api/products/1/details</code>
             </div>
 
-            <button className="primary-button">Send Request</button>
+            <button
+              className="primary-button"
+              onClick={sendRequest}
+              disabled={loading}
+            >
+              {loading ? 'Sending...' : 'Send Request'}
+            </button>
           </div>
 
           <div className="response-placeholder">
             <span>RESPONSE</span>
-            <p>
-              Request results will appear here when API integration is enabled.
-            </p>
+
+            {loading && (
+              <p>Sending request to API Gateway...</p>
+            )}
+
+            {error && (
+              <p>ERROR: {error}</p>
+            )}
+
+            {response && (
+              <pre>
+                {JSON.stringify(response, null, 2)}
+              </pre>
+            )}
+
+            {!loading && !error && !response && (
+              <p>
+                Click Send Request to test the API Gateway.
+              </p>
+            )}
           </div>
         </section>
 
