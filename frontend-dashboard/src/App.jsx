@@ -8,7 +8,7 @@ const services = [
     port: '8080',
     description: 'Single entry point for client requests',
     icon: '⇄',
-    healthPath: '/health/gateway/api/products/1/details',
+    healthUrl: '/health/gateway/api/products/1/details',
   },
   {
     key: 'registry',
@@ -16,7 +16,7 @@ const services = [
     port: '8761',
     description: 'Eureka service discovery',
     icon: '◎',
-    healthPath: '/health/registry/',
+    healthUrl: '/health/registry/',
   },
   {
     key: 'product',
@@ -24,7 +24,7 @@ const services = [
     port: '8081',
     description: 'Product information and aggregation',
     icon: '▣',
-    healthPath: '/health/product/api/products/1',
+    healthUrl: '/health/product/api/products/1',
   },
   {
     key: 'inventory',
@@ -32,7 +32,7 @@ const services = [
     port: '8082',
     description: 'Product inventory availability',
     icon: '▤',
-    healthPath: '/health/inventory/api/inventory/1',
+    healthUrl: '/health/inventory/api/inventory/1',
   },
   {
     key: 'recommendation',
@@ -40,7 +40,7 @@ const services = [
     port: '8083',
     description: 'Product recommendations',
     icon: '◇',
-    healthPath: '/health/recommendation/api/recommendations/1',
+    healthUrl: '/health/recommendation/api/recommendations/1',
   },
 ]
 
@@ -67,24 +67,27 @@ const resiliencePatterns = [
   },
 ]
 
+const initialHealth = {
+  gateway: 'UNKNOWN',
+  registry: 'UNKNOWN',
+  product: 'UNKNOWN',
+  inventory: 'UNKNOWN',
+  recommendation: 'UNKNOWN',
+}
+
 function App() {
   const [response, setResponse] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [requestLoading, setRequestLoading] = useState(false)
+  const [requestError, setRequestError] = useState('')
 
+  const [serviceHealth, setServiceHealth] = useState(initialHealth)
   const [healthChecking, setHealthChecking] = useState(false)
-
-  const [serviceHealth, setServiceHealth] = useState({
-    gateway: 'UNKNOWN',
-    registry: 'UNKNOWN',
-    product: 'UNKNOWN',
-    inventory: 'UNKNOWN',
-    recommendation: 'UNKNOWN',
-  })
+  const [lastChecked, setLastChecked] = useState(null)
 
   const sendRequest = async () => {
-    setLoading(true)
-    setError(null)
+    setRequestLoading(true)
+    setRequestError('')
+    setResponse(null)
 
     try {
       const result = await fetch('/api/products/1/details')
@@ -94,26 +97,33 @@ function App() {
       }
 
       const data = await result.json()
-
       setResponse(data)
-    } catch (err) {
-      setResponse(null)
-      setError(err.message)
+    } catch (error) {
+      setRequestError(error.message)
     } finally {
-      setLoading(false)
+      setRequestLoading(false)
     }
   }
 
   const checkService = async (service) => {
+    const controller = new AbortController()
+
+    const timeout = setTimeout(() => {
+      controller.abort()
+    }, 5000)
+
     try {
-      const result = await fetch(service.healthPath)
+      const result = await fetch(service.healthUrl, {
+        method: 'GET',
+        signal: controller.signal,
+        cache: 'no-store',
+      })
 
-      if (result.ok) {
-        return 'UP'
-      }
+      clearTimeout(timeout)
 
-      return 'DOWN'
+      return result.ok ? 'UP' : 'DOWN'
     } catch {
+      clearTimeout(timeout)
       return 'DOWN'
     }
   }
@@ -147,7 +157,14 @@ function App() {
     })
 
     setServiceHealth(updatedHealth)
+    setLastChecked(new Date())
     setHealthChecking(false)
+  }
+
+  const scrollToRequests = () => {
+    document
+      .getElementById('requests')
+      ?.scrollIntoView({ behavior: 'smooth' })
   }
 
   const allServicesUp = services.every(
@@ -158,17 +175,21 @@ function App() {
     (service) => serviceHealth[service.key] === 'DOWN',
   )
 
+  const downServices = services.filter(
+    (service) => serviceHealth[service.key] === 'DOWN',
+  )
+
   const getSystemStatus = () => {
     if (healthChecking) {
-      return 'Checking Services'
+      return 'Checking Services...'
+    }
+
+    if (hasDownService) {
+      return 'Service Degradation Detected'
     }
 
     if (allServicesUp) {
       return 'All Systems Operational'
-    }
-
-    if (hasDownService) {
-      return 'Service Issue Detected'
     }
 
     return 'System Ready'
@@ -247,6 +268,38 @@ function App() {
           </div>
         </header>
 
+        {lastChecked && (
+          <div
+            className={`health-summary ${
+              hasDownService ? 'health-summary-error' : ''
+            }`}
+          >
+            <div>
+              <strong>
+                {hasDownService
+                  ? `${downServices.length} service${
+                      downServices.length > 1 ? 's' : ''
+                    } unavailable`
+                  : 'All monitored services are responding'}
+              </strong>
+
+              <span>
+                Last checked at {lastChecked.toLocaleTimeString()}
+              </span>
+            </div>
+
+            {hasDownService && (
+              <div className="failed-services">
+                {downServices.map((service) => (
+                  <span key={service.key}>
+                    {service.name} DOWN
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <section className="hero-section" id="overview">
           <div>
             <span className="section-label">
@@ -260,10 +313,9 @@ function App() {
             </h2>
 
             <p>
-              Monitor the Spring Boot microservices architecture
-              and demonstrate circuit breakers, rate limiting,
-              bulkhead isolation and timeout protection from a
-              single dashboard.
+              Monitor the Spring Boot microservices architecture and
+              demonstrate circuit breakers, rate limiting, bulkhead
+              isolation and timeout protection from a single dashboard.
             </p>
 
             <div className="hero-actions">
@@ -279,12 +331,9 @@ function App() {
 
               <button
                 className="secondary-button"
-                onClick={sendRequest}
-                disabled={loading}
+                onClick={scrollToRequests}
               >
-                {loading
-                  ? 'Sending...'
-                  : 'Send Test Request'}
+                Send Test Request
               </button>
             </div>
           </div>
@@ -351,11 +400,16 @@ function App() {
 
           <div className="services-grid">
             {services.map((service) => {
-              const status = serviceHealth[service.key]
+              const status =
+                serviceHealth[service.key] || 'UNKNOWN'
 
               return (
                 <article
-                  className="service-card"
+                  className={`service-card ${
+                    status === 'DOWN'
+                      ? 'service-card-down'
+                      : ''
+                  }`}
                   key={service.name}
                 >
                   <div className="service-card-top">
@@ -364,10 +418,9 @@ function App() {
                     </div>
 
                     <span
-                      className={`service-status ${status.toLowerCase()}`}
+                      className={`service-status service-status-${status.toLowerCase()}`}
                     >
                       <span></span>
-
                       {status}
                     </span>
                   </div>
@@ -378,10 +431,7 @@ function App() {
 
                   <div className="service-meta">
                     <span>PORT</span>
-
-                    <strong>
-                      {service.port}
-                    </strong>
+                    <strong>{service.port}</strong>
                   </div>
                 </article>
               )
@@ -414,13 +464,9 @@ function App() {
                   <span>●</span>
                 </div>
 
-                <strong>
-                  {pattern.value}
-                </strong>
+                <strong>{pattern.value}</strong>
 
-                <p>
-                  {pattern.description}
-                </p>
+                <p>{pattern.description}</p>
               </article>
             ))}
           </div>
@@ -446,17 +492,15 @@ function App() {
                 GET
               </span>
 
-              <code>
-                /api/products/1/details
-              </code>
+              <code>/api/products/1/details</code>
             </div>
 
             <button
               className="primary-button"
               onClick={sendRequest}
-              disabled={loading}
+              disabled={requestLoading}
             >
-              {loading
+              {requestLoading
                 ? 'Sending...'
                 : 'Send Request'}
             </button>
@@ -465,36 +509,32 @@ function App() {
           <div className="response-placeholder">
             <span>RESPONSE</span>
 
-            {loading && (
+            {requestLoading && (
               <p>
-                Sending request to API Gateway...
+                Waiting for API Gateway response...
               </p>
             )}
 
-            {error && (
-              <p className="response-error">
-                ERROR: {error}
+            {!requestLoading &&
+              !requestError &&
+              !response && (
+                <p>
+                  Click Send Request to test the real API
+                  Gateway endpoint.
+                </p>
+              )}
+
+            {requestError && (
+              <p className="request-error">
+                ERROR: {requestError}
               </p>
             )}
 
             {response && (
-              <pre>
-                {JSON.stringify(
-                  response,
-                  null,
-                  2,
-                )}
+              <pre className="response-json">
+                {JSON.stringify(response, null, 2)}
               </pre>
             )}
-
-            {!loading &&
-              !error &&
-              !response && (
-                <p>
-                  Click Send Request to test
-                  the API Gateway.
-                </p>
-              )}
           </div>
         </section>
 
