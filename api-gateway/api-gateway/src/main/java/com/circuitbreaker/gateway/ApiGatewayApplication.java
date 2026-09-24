@@ -51,7 +51,7 @@ public class ApiGatewayApplication {
 				// Circuit Breaker + Fallback
 				.filter(
 						circuitBreaker(
-								"productTimeLimiter",
+								"productGatewayCircuitBreaker",
 								URI.create("forward:/product-fallback")
 						)
 				)
