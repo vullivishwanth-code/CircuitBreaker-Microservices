@@ -61,6 +61,26 @@ public class GatewayExceptionHandler {
                     .body(response);
         }
 
+        // Inventory Service unavailable
+        if (exception.getStatusCode().value() == 503
+                && request.getRequestURI()
+                .startsWith("/api/inventory/")) {
+
+            response.put(
+                    "status",
+                    "SERVICE_UNAVAILABLE"
+            );
+
+            response.put(
+                    "message",
+                    "Inventory Service is temporarily unavailable."
+            );
+
+            return ResponseEntity
+                    .status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(response);
+        }
+
         // Other gateway/server errors
         response.put(
                 "status",
