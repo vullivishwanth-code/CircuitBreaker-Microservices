@@ -17,15 +17,30 @@ public class ProductController {
         this.productService = productService;
     }
 
+
+    // =========================================================
+    // GET ALL PRODUCTS
+    // =========================================================
+
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productService.getAllProducts());
+
+        return ResponseEntity.ok(
+                productService.getAllProducts()
+        );
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
 
-        Product product = productService.getProductById(id);
+    // =========================================================
+    // GET PRODUCT BY ID
+    // =========================================================
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> getProductById(
+            @PathVariable Long id) {
+
+        Product product =
+                productService.getProductById(id);
 
         if (product == null) {
             return ResponseEntity.notFound().build();
@@ -34,16 +49,46 @@ public class ProductController {
         return ResponseEntity.ok(product);
     }
 
-    @GetMapping("/{id}/details")
-    public ResponseEntity<?> getProductDetails(@PathVariable Long id) {
-        
 
-        var details = productService.getProductWithInventory(id);
+    // =========================================================
+    // PRODUCT DETAILS
+    // =========================================================
+
+    @GetMapping("/{id}/details")
+    public ResponseEntity<?> getProductDetails(
+            @PathVariable Long id) {
+
+        var details =
+                productService.getProductWithInventory(id);
 
         if (details == null) {
             return ResponseEntity.notFound().build();
         }
 
         return ResponseEntity.ok(details);
+    }
+
+
+    // =========================================================
+    // SLOW PRODUCT ENDPOINT
+    // Used to demonstrate resilience under a slow backend.
+    // =========================================================
+
+    @GetMapping("/{id}/slow")
+    public ResponseEntity<Product> getSlowProduct(
+            @PathVariable Long id)
+            throws InterruptedException {
+
+        // Simulate a slow backend operation.
+        Thread.sleep(5000);
+
+        Product product =
+                productService.getProductById(id);
+
+        if (product == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(product);
     }
 }
