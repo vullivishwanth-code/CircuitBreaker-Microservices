@@ -1,1430 +1,333 @@
-\# CircuitBreaker Microservices
+# CircuitBreaker - Cloud-Native E-Commerce API Gateway
 
+A Spring Boot microservices project demonstrating fault tolerance, service discovery, API Gateway routing, resilience patterns, distributed tracing, and real-time service monitoring.
 
+This project was developed as part of a Spring Boot Microservices Internship Project.
 
-A Spring Boot microservices project demonstrating service discovery, API Gateway routing, service-to-service communication, and resilience patterns including Circuit Breaker, Rate Limiting, Bulkhead Isolation, Timeout Handling, and Fallback Responses.
+## Project Overview
 
+The system simulates a cloud-native e-commerce backend consisting of multiple independent microservices connected through an API Gateway.
 
+The architecture demonstrates how a distributed application can remain stable when individual services become slow, overloaded, or unavailable.
 
-\## Project Overview
-
-
-
-This project demonstrates how a distributed microservices application can remain stable and responsive when individual services become slow, overloaded, or temporarily unavailable.
-
-
-
-The system contains five major components:
-
-
-
-\- Service Registry
-
-\- Product Service
-
-\- Inventory Service
-
-\- Recommendation Service
-
-\- API Gateway
-
-
-
-The Product Service communicates with the Inventory Service and Recommendation Service to build a combined product response.
-
-
-
-The API Gateway acts as the centralized entry point and applies resilience mechanisms to protect downstream services.
-
-
-
-\---
-
-
-
-\## Architecture
-
-
+## Architecture
 
 ```text
+                    Client / React Dashboard
+                              |
+                              v
+                     API Gateway :8080
+                              |
+              +---------------+---------------+
+              |               |               |
+              v               v               v
+        Product Service  Inventory Service  Recommendation Service
+            :8081            :8082              :8083
+              |               |                  |
+              +---------------+------------------+
+                              |
+                              v
+                    Eureka Registry :8761
 
-&#x20;                        CLIENT
-
-&#x20;                           |
-
-&#x20;                           v
-
-&#x20;                    +-------------+
-
-&#x20;                    | API Gateway |
-
-&#x20;                    |  Port 8080  |
-
-&#x20;                    +-------------+
-
-&#x20;                           |
-
-&#x20;            +--------------+--------------+
-
-&#x20;            |                             |
-
-&#x20;            v                             v
-
-&#x20;     Request Routing              Resilience Layer
-
-&#x20;                                  - Circuit Breaker
-
-&#x20;                                  - Rate Limiter
-
-&#x20;                                  - Bulkhead
-
-&#x20;                                  - TimeLimiter
-
-&#x20;            |
-
-&#x20;            v
-
-&#x20;     +-----------------+
-
-&#x20;     | Product Service |
-
-&#x20;     |    Port 8081    |
-
-&#x20;     +-----------------+
-
-&#x20;            |
-
-&#x20;       +----+----+
-
-&#x20;       |         |
-
-&#x20;       v         v
-
-+---------------+   +------------------------+
-
-|   Inventory   |   | Recommendation Service |
-
-|    Service    |   |       Port 8083        |
-
-|   Port 8082   |   +------------------------+
-
-+---------------+
-
-&#x20;       |
-
-&#x20;       +-------------------+
-
-&#x20;                           |
-
-&#x20;                           v
-
-&#x20;                   +----------------+
-
-&#x20;                   | Eureka Service |
-
-&#x20;                   |    Registry    |
-
-&#x20;                   |   Port 8761    |
-
-&#x20;                   +----------------+
-
+                    Distributed Tracing
+                              |
+                              v
+                         Zipkin :9411
 ```
 
+## Microservices
 
+| Component | Port | Purpose |
+|---|---:|---|
+| API Gateway | 8080 | Central entry point and resilience layer |
+| Product Service | 8081 | Product catalog operations |
+| Inventory Service | 8082 | Inventory information |
+| Recommendation Service | 8083 | Product recommendations |
+| Eureka Server | 8761 | Service discovery |
+| React Dashboard | 5173/5174 | Monitoring and resilience UI |
+| Zipkin | 9411 | Distributed tracing |
 
-\---
+## Technologies Used
 
+### Backend
 
+- Java
+- Spring Boot
+- Spring Cloud Gateway
+- Spring Cloud Netflix Eureka
+- Resilience4j
+- Bucket4j
+- Micrometer Tracing
+- Zipkin
+- Maven
 
-\## Technologies Used
+### Frontend
 
+- React
+- Vite
+- JavaScript
+- CSS
 
+### Development Tools
 
-\- Java 21
+- IntelliJ IDEA
+- Visual Studio Code
+- Git
+- GitHub
+- Docker
+- PowerShell
 
-\- Spring Boot
+## Resilience Features
 
-\- Spring Cloud
+### Circuit Breaker
 
-\- Spring Cloud Gateway
+Resilience4j Circuit Breakers protect downstream microservices from repeated failures.
 
-\- Netflix Eureka
-
-\- Resilience4j
-
-\- Bucket4j
-
-\- Caffeine Cache
-
-\- Maven
-
-\- REST APIs
-
-\- Git
-
-\- GitHub
-
-
-
-\---
-
-
-
-\## Microservices
-
-
-
-\### 1. Service Registry
-
-
-
-The Service Registry uses Netflix Eureka for service discovery.
-
-
-
-Instead of depending entirely on hardcoded service addresses, microservices can register themselves with Eureka and discover other services dynamically.
-
-
-
-\*\*Port:\*\*
-
-
+The system supports states such as:
 
 ```text
-
-8761
-
+CLOSED -> OPEN -> HALF_OPEN -> CLOSED
 ```
 
+Fallback responses are returned when protected services are unavailable.
 
+### Retry
 
-Eureka Dashboard:
+Failed Product Service requests can automatically be retried before returning a failure response.
 
+The Product route is configured with retry behavior and backoff.
 
+### Rate Limiting
+
+The API Gateway protects Product Service endpoints from excessive requests using Bucket4j.
+
+When the configured request limit is exceeded, the Gateway returns:
 
 ```text
-
-http://localhost:8761
-
-```
-
-
-
-\---
-
-
-
-\### 2. Product Service
-
-
-
-The Product Service handles product-related operations.
-
-
-
-It also communicates with:
-
-
-
-\- Inventory Service
-
-\- Recommendation Service
-
-
-
-to provide aggregated product information.
-
-
-
-\*\*Port:\*\*
-
-
-
-```text
-
-8081
-
-```
-
-
-
-Example endpoints:
-
-
-
-```http
-
-GET /api/products
-
-GET /api/products/{id}
-
-GET /api/products/{id}/details
-
-```
-
-
-
-The details endpoint combines information from multiple microservices:
-
-
-
-```text
-
-Product Information
-
-&#x20;       +
-
-Inventory Information
-
-&#x20;       +
-
-Recommendation Information
-
-&#x20;       =
-
-Combined Product Response
-
-```
-
-
-
-Example response:
-
-
-
-```json
-
-{
-
-&#x20; "product": {
-
-&#x20;   "id": 1,
-
-&#x20;   "name": "Apple MacBook Pro 14",
-
-&#x20;   "category": "Laptops",
-
-&#x20;   "price": 1999.99,
-
-&#x20;   "stock": 12
-
-&#x20; },
-
-&#x20; "inventory": {
-
-&#x20;   "productId": 1,
-
-&#x20;   "availableQuantity": 12,
-
-&#x20;   "warehouseLocation": "Dallas Warehouse"
-
-&#x20; },
-
-&#x20; "recommendations": {
-
-&#x20;   "recommendations": \[
-
-&#x20;     "Top Sellers",
-
-&#x20;     "Trending Products",
-
-&#x20;     "Customers Also Viewed"
-
-&#x20;   ],
-
-&#x20;   "productId": 1
-
-&#x20; }
-
-}
-
-```
-
-
-
-\---
-
-
-
-\### 3. Inventory Service
-
-
-
-The Inventory Service provides inventory-related information such as product availability and warehouse data.
-
-
-
-\*\*Port:\*\*
-
-
-
-```text
-
-8082
-
-```
-
-
-
-It allows the Product Service to retrieve inventory information independently from the product domain.
-
-
-
-\---
-
-
-
-\### 4. Recommendation Service
-
-
-
-The Recommendation Service provides recommendation information for products.
-
-
-
-\*\*Port:\*\*
-
-
-
-```text
-
-8083
-
-```
-
-
-
-This demonstrates how a product-facing service can retrieve additional information from an independent downstream microservice.
-
-
-
-\---
-
-
-
-\### 5. API Gateway
-
-
-
-The API Gateway acts as the main entry point into the microservices architecture.
-
-
-
-\*\*Port:\*\*
-
-
-
-```text
-
-8080
-
-```
-
-
-
-Instead of clients communicating directly with every internal service, requests can pass through the Gateway.
-
-
-
-The Gateway provides:
-
-
-
-\- Centralized routing
-
-\- Eureka-based service discovery
-
-\- Load-balanced routing
-
-\- Circuit Breaker protection
-
-\- Rate Limiting
-
-\- Bulkhead isolation
-
-\- Timeout protection
-
-\- Fallback handling
-
-
-
-\---
-
-
-
-\# Resilience Patterns
-
-
-
-A major objective of this project is demonstrating how microservices behave when downstream dependencies experience failures or delays.
-
-
-
-\## Circuit Breaker
-
-
-
-The Circuit Breaker pattern protects the application from repeatedly calling an unhealthy or slow downstream service.
-
-
-
-Conceptually:
-
-
-
-```text
-
-CLOSED
-
-&#x20;  |
-
-Failures exceed threshold
-
-&#x20;  |
-
-&#x20;  v
-
-OPEN
-
-&#x20;  |
-
-Wait / recovery period
-
-&#x20;  |
-
-&#x20;  v
-
-HALF\_OPEN
-
-&#x20;  |
-
-Successful requests
-
-&#x20;  |
-
-&#x20;  v
-
-CLOSED
-
-```
-
-
-
-\### CLOSED
-
-
-
-Requests are allowed normally.
-
-
-
-\### OPEN
-
-
-
-Requests to the unhealthy service are temporarily prevented.
-
-
-
-\### HALF\_OPEN
-
-
-
-A limited number of requests are allowed to determine whether the downstream service has recovered.
-
-
-
-This helps prevent cascading failures across the application.
-
-
-
-\---
-
-
-
-\## Timeout Handling
-
-
-
-A downstream service should not be allowed to block a request indefinitely.
-
-
-
-The project demonstrates timeout protection for slow service responses.
-
-
-
-Example scenario:
-
-
-
-```text
-
-Product Service delay = 5 seconds
-
-Gateway timeout       = 3 seconds
-
-```
-
-
-
-Instead of waiting indefinitely, the Gateway can stop waiting and return a controlled response.
-
-
-
-Example fallback response:
-
-
-
-```json
-
-{
-
-&#x20; "status": "SERVICE\_UNAVAILABLE",
-
-&#x20; "message": "Product Service is taking too long. Please try again."
-
-}
-
-```
-
-
-
-\---
-
-
-
-\## Rate Limiting
-
-
-
-Rate limiting protects the API from excessive request traffic.
-
-
-
-The project uses Bucket4j for rate limiting.
-
-
-
-Example configuration:
-
-
-
-```text
-
-5 requests every 10 seconds
-
-```
-
-
-
-When the allowed request limit is exceeded, the client receives:
-
-
-
-```text
-
 HTTP 429 Too Many Requests
-
 ```
 
+### Bulkhead
 
+Bulkhead isolation limits the number of concurrent requests reaching protected backend operations.
 
-This protects backend services from excessive traffic.
+This prevents one overloaded operation from consuming all available resources.
 
+### Timeout Protection
 
+Slow backend operations are protected by timeout mechanisms so requests do not wait indefinitely.
 
-\---
-
-
-
-\## Bulkhead Pattern
-
-
-
-The Bulkhead pattern limits the number of requests that can simultaneously use a protected resource.
-
-
-
-Example configuration:
-
-
-
-```text
-
-Maximum concurrent calls: 3
-
-```
-
-
-
-Conceptually:
-
-
-
-```text
-
-Incoming Requests
-
-&#x20;     |
-
-&#x20;     v
-
-+----------------+
-
-|    Bulkhead    |
-
-| Max Calls = 3  |
-
-+----------------+
-
-&#x20;  |    |    |
-
-&#x20;  v    v    v
-
-&#x20;Req1 Req2 Req3
-
-
-
-Additional requests
-
-&#x20;       |
-
-&#x20;       v
-
-&#x20;Controlled rejection
-
-```
-
-
-
-This prevents one overloaded component from consuming all available resources.
-
-
-
-\---
-
-
-
-\## Service Discovery
-
-
-
-All services can register with Eureka.
-
-
-
-The Service Registry provides a centralized location for discovering running service instances.
-
-
-
-Conceptually:
-
-
-
-```text
-
-Product Service --------+
-
-Inventory Service ------+
-
-Recommendation Service -+----> Eureka Registry
-
-API Gateway ------------+
-
-```
-
-
-
-This allows the architecture to use logical service identities rather than relying only on fixed network addresses.
-
-
-
-\---
-
-
-
-\## Service-to-Service Communication
-
-
-
-The Product Service communicates with downstream services to create a combined response.
-
-
-
-```text
-
-Product Service
-
-&#x20;     |
-
-&#x20;     +--------> Inventory Service
-
-&#x20;     |
-
-&#x20;     +--------> Recommendation Service
-
-```
-
-
-
-The responses are combined before being returned to the client.
-
-
-
-\---
-
-
-
-\# Failure Handling
-
-
-
-\## Normal Flow
-
-
-
-```text
-
-Client
-
-&#x20; |
-
-&#x20; v
-
-API Gateway
-
-&#x20; |
-
-&#x20; v
-
-Product Service
-
-&#x20; |
-
-&#x20; +------> Inventory Service
-
-&#x20; |
-
-&#x20; +------> Recommendation Service
-
-&#x20; |
-
-&#x20; v
-
-Successful Response
-
-```
-
-
-
-\## Slow or Failed Service
-
-
-
-```text
-
-Client
-
-&#x20; |
-
-&#x20; v
-
-API Gateway
-
-&#x20; |
-
-&#x20; v
-
-Resilience Protection
-
-&#x20; |
-
-&#x20; X
-
-Slow / Unavailable Service
-
-&#x20; |
-
-&#x20; v
-
-Fallback Response
-
-```
-
-
-
-\## Recovery
-
-
-
-After the downstream service becomes healthy again:
-
-
-
-```text
-
-Client
-
-&#x20; |
-
-&#x20; v
-
-API Gateway
-
-&#x20; |
-
-&#x20; v
-
-Product Service
-
-&#x20; |
-
-&#x20; v
-
-Normal Response Restored
-
-```
-
-
-
-This demonstrates graceful degradation and recovery in a distributed application.
-
-
-
-\---
-
-
-
-\# Running the Project
-
-
-
-\## Prerequisites
-
-
-
-Make sure the following are installed:
-
-
-
-\- Java 21
-
-\- Maven
-
-\- Git
-
-
-
-\---
-
-
-
-\## Startup Order
-
-
-
-Start the applications in this order:
-
-
-
-```text
-
-1\. Service Registry
-
-2\. Inventory Service
-
-3\. Recommendation Service
-
-4\. Product Service
-
-5\. API Gateway
-
-```
-
-
-
-\---
-
-
-
-\## Step 1 - Start Service Registry
-
-
-
-Start the Eureka Service Registry.
-
-
-
-Then open:
-
-
-
-```text
-
-http://localhost:8761
-
-```
-
-
-
-Verify that the Eureka dashboard is running.
-
-
-
-\---
-
-
-
-\## Step 2 - Start Inventory Service
-
-
-
-Start the Inventory Service.
-
-
-
-Expected port:
-
-
-
-```text
-
-8082
-
-```
-
-
-
-\---
-
-
-
-\## Step 3 - Start Recommendation Service
-
-
-
-Start the Recommendation Service.
-
-
-
-Expected port:
-
-
-
-```text
-
-8083
-
-```
-
-
-
-\---
-
-
-
-\## Step 4 - Start Product Service
-
-
-
-Start the Product Service.
-
-
-
-Expected port:
-
-
-
-```text
-
-8081
-
-```
-
-
-
-\---
-
-
-
-\## Step 5 - Start API Gateway
-
-
-
-Finally start the API Gateway.
-
-
-
-Expected port:
-
-
-
-```text
-
-8080
-
-```
-
-
-
-\---
-
-
-
-\# Testing
-
-
-
-Once all services are running, verify them in the Eureka Dashboard.
-
-
-
-Then test the application through the API Gateway.
-
-
+A dedicated slow Product endpoint is included for resilience testing.
 
 Example:
 
-
-
 ```text
-
-http://localhost:8080/api/products/1/details
-
+/api/products/1/slow
 ```
 
+### Graceful Fallback
 
+If a service becomes unavailable, the Gateway can return a controlled fallback response instead of exposing an uncontrolled backend failure.
 
-The expected flow is:
+Example:
 
+```json
+{
+  "status": "SERVICE_UNAVAILABLE",
+  "message": "Product Service is temporarily unavailable."
+}
+```
 
+Similar fallback behavior is provided for Inventory and Recommendation services.
+
+## Service Discovery
+
+Eureka Server provides service registration and discovery.
+
+The Gateway routes requests using registered service names rather than depending only on fixed service addresses.
+
+Examples:
 
 ```text
+product-service
+inventory-service
+recommendation-service
+```
 
+## Distributed Tracing
+
+Micrometer Tracing and Zipkin are used to observe requests across the distributed system.
+
+A request can be traced through components such as:
+
+```text
 Client
-
-&#x20; |
-
-&#x20; v
-
+   |
 API Gateway
-
-&#x20; |
-
-&#x20; v
-
+   |
 Product Service
-
-&#x20; |
-
-&#x20; +---- Inventory Service
-
-&#x20; |
-
-&#x20; +---- Recommendation Service
-
-&#x20; |
-
-&#x20; v
-
-Combined Response
-
 ```
 
+Zipkin provides trace IDs, spans, request duration, and service-to-service visibility.
 
-
-\---
-
-
-
-\# Project Structure
-
-
+Zipkin UI:
 
 ```text
-
-CircuitBreaker-Microservices/
-
-|
-
-|-- service-registry/
-
-|
-
-|-- product-service/
-
-|
-
-|-- inventory-service/
-
-|
-
-|-- recommendation-service/
-
-|
-
-|-- api-gateway/
-
-|
-
-|-- .gitignore
-
-|
-
-`-- README.md
-
+http://localhost:9411/zipkin/
 ```
 
+## Monitoring Dashboard
 
+The project contains a React-based monitoring dashboard called **ResilienceHub**.
 
-Each microservice is maintained as an independent Spring Boot application.
+The dashboard provides visual information about:
 
+- API Gateway health
+- Product Service health
+- Inventory Service health
+- Recommendation Service health
+- Eureka availability
+- Circuit Breaker state
+- Rate Limiter configuration
+- Bulkhead protection
+- Timeout protection
+- Request testing
+- Service degradation
+- Service recovery
 
+When a service is stopped, the dashboard can display a degraded system state.
 
-\---
-
-
-
-\# Git Commit History
-
-
-
-The repository was developed using feature-based commits.
-
-
+After the service is restarted and becomes healthy again, the dashboard returns to:
 
 ```text
-
-feat: set up Eureka service registry
-
-feat: add product microservice
-
-feat: add inventory microservice
-
-feat: add recommendation microservice
-
-feat: add API gateway with resilience configurations
-
-docs: add comprehensive project README
-
+All Systems Operational
 ```
 
+## Request Logging
 
+The API Gateway records incoming and completed requests.
 
-This makes the development history easier to understand and review.
-
-
-
-\---
-
-
-
-\# Key Concepts Demonstrated
-
-
-
-This project demonstrates practical implementation of:
-
-
-
-\- Microservices Architecture
-
-\- Spring Boot
-
-\- REST API Development
-
-\- Service Discovery
-
-\- Netflix Eureka
-
-\- API Gateway
-
-\- Service-to-Service Communication
-
-\- Circuit Breaker Pattern
-
-\- Rate Limiting
-
-\- Bulkhead Pattern
-
-\- Timeout Handling
-
-\- Fallback Responses
-
-\- Graceful Degradation
-
-\- Failure Recovery
-
-\- Distributed Application Design
-
-\- Git Version Control
-
-
-
-\---
-
-
-
-\# Why Resilience Matters
-
-
-
-In a distributed system, failures are expected.
-
-
-
-A service may:
-
-
-
-\- Become unavailable
-
-\- Respond slowly
-
-\- Receive excessive traffic
-
-\- Exhaust resources
-
-\- Experience temporary network problems
-
-
-
-Without resilience mechanisms, failure in one service can affect multiple dependent services.
-
-
-
-This project demonstrates techniques for reducing that risk.
-
-
+Example:
 
 ```text
+Request ID: <UUID> | Incoming request: GET /api/products/1
 
-Failure
-
-&#x20;  |
-
-&#x20;  v
-
-Resilience Layer
-
-&#x20;  |
-
-&#x20;  +---- Circuit Breaker
-
-&#x20;  |
-
-&#x20;  +---- Timeout
-
-&#x20;  |
-
-&#x20;  +---- Rate Limiter
-
-&#x20;  |
-
-&#x20;  +---- Bulkhead
-
-&#x20;  |
-
-&#x20;  v
-
-Controlled Response
-
+Request ID: <UUID> | Completed request: GET /api/products/1 | Status: 200 | Time: <duration>
 ```
 
+Request IDs make it easier to correlate logs belonging to the same request.
 
+## Chaos / Failure Testing
 
-\---
+The system supports manual failure simulation.
 
+Example procedure:
 
+1. Start all services.
+2. Verify the dashboard reports healthy services.
+3. Stop one backend service.
+4. Send requests through the API Gateway.
+5. Observe fallback/degraded behavior.
+6. Observe the dashboard reporting the unavailable service.
+7. Restart the service.
+8. Run the health check again.
+9. Verify the dashboard returns to the operational state.
 
-\# Future Improvements
+This demonstrates service failure detection and recovery.
 
+## Example API Endpoints
 
+### Product
 
-Potential future enhancements include:
+```text
+GET http://localhost:8080/api/products/1
+```
 
+### Slow Product Test
 
+```text
+GET http://localhost:8080/api/products/1/slow
+```
 
-\- Docker containerization
+### Inventory
 
-\- Docker Compose
+```text
+GET http://localhost:8080/api/inventory/1
+```
 
-\- Centralized configuration
+### Recommendation
 
-\- Spring Cloud Config Server
+```text
+GET http://localhost:8080/api/recommendations/1
+```
 
-\- Prometheus metrics
+## Running the Project
 
-\- Grafana dashboards
+Start the components in the following order:
 
-\- Distributed tracing
+```text
+1. Eureka Service Registry
+2. Product Service
+3. Inventory Service
+4. Recommendation Service
+5. API Gateway
+6. React Dashboard
+7. Zipkin
+```
 
-\- Centralized logging
+Start the React dashboard from:
 
-\- Database persistence
+```text
+frontend-dashboard
+```
 
-\- Authentication and authorization
+Run:
 
-\- Automated integration testing
+```bash
+npm install
+npm run dev
+```
 
-\- CI/CD pipeline
+For Zipkin, Docker can be used:
 
-\- Cloud deployment
+```bash
+docker run -d -p 9411:9411 --name zipkin openzipkin/zipkin
+```
 
-\- Kubernetes deployment
+Then open the dashboard using the URL displayed by Vite, normally:
 
+```text
+http://localhost:5173
+```
 
+or another available development port such as:
 
-\---
+```text
+http://localhost:5174
+```
 
+## Key Learning Outcomes
 
+This project demonstrates practical understanding of:
 
-\# Learning Outcomes
+1. Microservices architecture
+2. Spring Boot REST APIs
+3. Spring Cloud Gateway
+4. Eureka service discovery
+5. Circuit Breaker pattern
+6. Retry pattern
+7. Rate limiting
+8. Bulkhead isolation
+9. Timeout protection
+10. Graceful fallback handling
+11. Distributed tracing with Zipkin
+12. Request correlation and logging
+13. React-based service monitoring
+14. Failure and recovery testing
+15. Git and GitHub project management
 
+## Author
 
-
-Through this project, the following concepts were explored:
-
-
-
-1\. Designing independent Spring Boot microservices.
-
-2\. Registering services using Eureka.
-
-3\. Implementing service discovery.
-
-4\. Creating REST APIs.
-
-5\. Implementing service-to-service communication.
-
-6\. Building a centralized API Gateway.
-
-7\. Protecting services using Circuit Breaker patterns.
-
-8\. Handling slow responses with timeout mechanisms.
-
-9\. Protecting APIs using rate limiting.
-
-10\. Isolating concurrent requests using the Bulkhead pattern.
-
-11\. Implementing graceful fallback behavior.
-
-12\. Managing a multi-service project using Git and GitHub.
-
-
-
-\---
-
-
-
-\# Author
-
-
-
-\*\*Vishwanth Vulli\*\*
-
-
+**Vishwanth Vulli**
 
 Spring Boot Microservices Internship Project
-
