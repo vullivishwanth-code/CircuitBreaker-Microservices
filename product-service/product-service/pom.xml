@@ -58,6 +58,12 @@
 			<artifactId>resilience4j-micrometer</artifactId>
 		</dependency>
 
+		<!-- Distributed Tracing: Micrometer + Brave + Zipkin -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-zipkin</artifactId>
+		</dependency>
+
 		<!-- Actuator Tests -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -77,6 +83,7 @@
 	<!-- Spring Cloud Version Management -->
 	<dependencyManagement>
 		<dependencies>
+
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
@@ -84,15 +91,18 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 
 	<build>
 		<plugins>
+
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+
 		</plugins>
 	</build>
 
