@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.UUID;
 
 @Component
 public class RequestLoggingFilter implements Filter {
@@ -33,10 +34,20 @@ public class RequestLoggingFilter implements Filter {
         HttpServletResponse httpResponse =
                 (HttpServletResponse) response;
 
+        // Generate a unique ID for every request
+        String requestId = UUID.randomUUID().toString();
+
+        // Return the request ID in the response header
+        httpResponse.setHeader(
+                "X-Request-ID",
+                requestId
+        );
+
         long startTime = System.currentTimeMillis();
 
         logger.info(
-                "Incoming request: {} {}",
+                "Request ID: {} | Incoming request: {} {}",
+                requestId,
                 httpRequest.getMethod(),
                 httpRequest.getRequestURI()
         );
@@ -51,7 +62,8 @@ public class RequestLoggingFilter implements Filter {
                     System.currentTimeMillis() - startTime;
 
             logger.info(
-                    "Completed request: {} {} | Status: {} | Time: {}ms",
+                    "Request ID: {} | Completed request: {} {} | Status: {} | Time: {}ms",
+                    requestId,
                     httpRequest.getMethod(),
                     httpRequest.getRequestURI(),
                     httpResponse.getStatus(),
