@@ -43,17 +43,19 @@ public class ApiGatewayApplication {
 						http()
 				)
 
-				// Eureka Load Balancer
-				.filter(
-						lb("product-service")
-				)
-
 				// Product Circuit Breaker
+				// Placed before the Load Balancer so discovery/load-balancer
+				// failures can be observed by the circuit breaker.
 				.filter(
 						circuitBreaker(
 								"productGatewayCircuitBreaker",
 								URI.create("forward:/product-fallback")
 						)
+				)
+
+				// Eureka Load Balancer
+				.filter(
+						lb("product-service")
 				)
 
 				// Product Bulkhead
@@ -105,7 +107,7 @@ public class ApiGatewayApplication {
 								.body("""
                                         {
                                           "status": "SERVICE_UNAVAILABLE",
-                                          "message": "Product Service is taking too long. Please try again."
+                                          "message": "Product Service is temporarily unavailable."
                                         }
                                         """)
 				)
@@ -129,17 +131,17 @@ public class ApiGatewayApplication {
 						http()
 				)
 
-				// Eureka Load Balancer
-				.filter(
-						lb("inventory-service")
-				)
-
 				// Inventory Circuit Breaker
 				.filter(
 						circuitBreaker(
 								"inventoryCircuitBreaker",
 								URI.create("forward:/inventory-fallback")
 						)
+				)
+
+				// Eureka Load Balancer
+				.filter(
+						lb("inventory-service")
 				)
 
 				.build();
@@ -187,17 +189,17 @@ public class ApiGatewayApplication {
 						http()
 				)
 
-				// Eureka Load Balancer
-				.filter(
-						lb("recommendation-service")
-				)
-
 				// Recommendation Circuit Breaker
 				.filter(
 						circuitBreaker(
 								"recommendationCircuitBreaker",
 								URI.create("forward:/recommendation-fallback")
 						)
+				)
+
+				// Eureka Load Balancer
+				.filter(
+						lb("recommendation-service")
 				)
 
 				.build();
@@ -217,8 +219,7 @@ public class ApiGatewayApplication {
 						"/recommendation-fallback",
 
 						request -> ServerResponse
-								.status(HttpStatus.SERVICE_UNAVAILABLE)
-								.body("""
+								.status(HttpStatus.SERVICE_UNAVAILABLE)								.body("""
                                         {
                                           "status": "SERVICE_UNAVAILABLE",
                                           "message": "Recommendation Service is temporarily unavailable."
