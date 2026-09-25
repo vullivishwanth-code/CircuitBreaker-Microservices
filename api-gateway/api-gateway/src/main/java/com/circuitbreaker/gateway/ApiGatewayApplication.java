@@ -115,6 +115,32 @@ public class ApiGatewayApplication {
 
 
 	// =========================================================
+	// INVENTORY SERVICE ROUTE
+	// =========================================================
+
+	@Bean
+	public RouterFunction<ServerResponse> inventoryRoute() {
+
+		return route("inventory-route")
+
+				// Incoming request:
+				// /api/inventory/{productId}
+				.route(
+						request -> request.path()
+								.startsWith("/api/inventory/"),
+						http()
+				)
+
+				// Eureka / Load-balanced Inventory Service
+				.filter(
+						lb("inventory-service")
+				)
+
+				.build();
+	}
+
+
+	// =========================================================
 	// RECOMMENDATION SERVICE ROUTE
 	// =========================================================
 
