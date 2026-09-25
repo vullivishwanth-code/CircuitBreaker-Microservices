@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,12 +30,33 @@ public class RequestLoggingFilter implements Filter {
         HttpServletRequest httpRequest =
                 (HttpServletRequest) request;
 
+        HttpServletResponse httpResponse =
+                (HttpServletResponse) response;
+
+        long startTime = System.currentTimeMillis();
+
         logger.info(
                 "Incoming request: {} {}",
                 httpRequest.getMethod(),
                 httpRequest.getRequestURI()
         );
 
-        chain.doFilter(request, response);
+        try {
+
+            chain.doFilter(request, response);
+
+        } finally {
+
+            long duration =
+                    System.currentTimeMillis() - startTime;
+
+            logger.info(
+                    "Completed request: {} {} | Status: {} | Time: {}ms",
+                    httpRequest.getMethod(),
+                    httpRequest.getRequestURI(),
+                    httpResponse.getStatus(),
+                    duration
+            );
+        }
     }
 }
