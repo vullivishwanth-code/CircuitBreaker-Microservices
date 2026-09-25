@@ -1,5 +1,8 @@
 package com.circuitbreaker.gateway.filter;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,6 +24,19 @@ public class RequestLoggingFilter implements Filter {
     private static final Logger logger =
             LoggerFactory.getLogger(RequestLoggingFilter.class);
 
+    private final Counter gatewayRequestCounter;
+
+    public RequestLoggingFilter(MeterRegistry meterRegistry) {
+
+        this.gatewayRequestCounter = Counter.builder(
+                        "gateway.requests.total"
+                )
+                .description(
+                        "Total number of requests processed by the API Gateway"
+                )
+                .register(meterRegistry);
+    }
+
     @Override
     public void doFilter(
             ServletRequest request,
@@ -34,16 +50,19 @@ public class RequestLoggingFilter implements Filter {
         HttpServletResponse httpResponse =
                 (HttpServletResponse) response;
 
-        // Generate a unique ID for every request
-        String requestId = UUID.randomUUID().toString();
+        String requestId =
+                UUID.randomUUID().toString();
 
-        // Return the request ID in the response header
         httpResponse.setHeader(
                 "X-Request-ID",
                 requestId
         );
 
-        long startTime = System.currentTimeMillis();
+        long startTime =
+                System.currentTimeMillis();
+
+        // Count every request received by the gateway
+        gatewayRequestCounter.increment();
 
         logger.info(
                 "Request ID: {} | Incoming request: {} {}",
