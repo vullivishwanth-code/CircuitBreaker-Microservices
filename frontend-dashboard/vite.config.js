@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,
       },
 
+      '/actuator': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+
       '/health/gateway': {
         target: 'http://localhost:8080',
         changeOrigin: true,

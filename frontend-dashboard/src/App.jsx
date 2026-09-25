@@ -44,29 +44,6 @@ const services = [
   },
 ]
 
-const resiliencePatterns = [
-  {
-    title: 'Circuit Breaker',
-    value: 'CLOSED',
-    description: 'Protects services from cascading failures',
-  },
-  {
-    title: 'Rate Limiter',
-    value: '5 / 10 sec',
-    description: 'Controls excessive incoming requests',
-  },
-  {
-    title: 'Bulkhead',
-    value: '3 concurrent',
-    description: 'Isolates concurrent service requests',
-  },
-  {
-    title: 'Time Limiter',
-    value: '3 seconds',
-    description: 'Stops requests that take too long',
-  },
-]
-
 const initialHealth = {
   gateway: 'UNKNOWN',
   registry: 'UNKNOWN',
@@ -83,6 +60,9 @@ function App() {
   const [serviceHealth, setServiceHealth] = useState(initialHealth)
   const [healthChecking, setHealthChecking] = useState(false)
   const [lastChecked, setLastChecked] = useState(null)
+
+  const [circuitBreakerState, setCircuitBreakerState] =
+    useState('UNKNOWN')
 
   const sendRequest = async () => {
     setRequestLoading(true)
@@ -128,6 +108,37 @@ function App() {
     }
   }
 
+  const fetchCircuitBreakerState = async () => {
+    const states = ['closed', 'open', 'half_open']
+
+    try {
+      for (const state of states) {
+        const result = await fetch(
+          `/actuator/metrics/resilience4j.circuitbreaker.state?tag=name:productGatewayCircuitBreaker&tag=state:${state}`,
+          {
+            cache: 'no-store',
+          },
+        )
+
+        if (!result.ok) {
+          continue
+        }
+
+        const data = await result.json()
+        const value = data.measurements?.[0]?.value ?? 0
+
+        if (value === 1) {
+          setCircuitBreakerState(state.toUpperCase())
+          return
+        }
+      }
+
+      setCircuitBreakerState('UNKNOWN')
+    } catch {
+      setCircuitBreakerState('UNKNOWN')
+    }
+  }
+
   const runHealthCheck = async () => {
     setHealthChecking(true)
 
@@ -157,6 +168,9 @@ function App() {
     })
 
     setServiceHealth(updatedHealth)
+
+    await fetchCircuitBreakerState()
+
     setLastChecked(new Date())
     setHealthChecking(false)
   }
@@ -194,6 +208,29 @@ function App() {
 
     return 'System Ready'
   }
+
+  const resiliencePatterns = [
+    {
+      title: 'Circuit Breaker',
+      value: circuitBreakerState,
+      description: 'Live Product Gateway circuit breaker state',
+    },
+    {
+      title: 'Rate Limiter',
+      value: '5 / 10 sec',
+      description: 'Controls excessive incoming requests',
+    },
+    {
+      title: 'Bulkhead',
+      value: '3 concurrent',
+      description: 'Isolates concurrent service requests',
+    },
+    {
+      title: 'Time Limiter',
+      value: '3 seconds',
+      description: 'Stops requests that take too long',
+    },
+  ]
 
   return (
     <div className="app">
