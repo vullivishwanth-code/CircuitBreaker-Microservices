@@ -43,12 +43,12 @@ public class ApiGatewayApplication {
 						http()
 				)
 
-				// Eureka / Load-balanced Product Service
+				// Eureka Load Balancer
 				.filter(
 						lb("product-service")
 				)
 
-				// Circuit Breaker + Fallback
+				// Product Circuit Breaker
 				.filter(
 						circuitBreaker(
 								"productGatewayCircuitBreaker",
@@ -56,7 +56,7 @@ public class ApiGatewayApplication {
 						)
 				)
 
-				// Bulkhead - maximum 3 concurrent Product requests
+				// Product Bulkhead
 				.filter((request, next) -> {
 
 					try {
@@ -75,7 +75,7 @@ public class ApiGatewayApplication {
 					}
 				})
 
-				// Rate Limiter - 5 requests every 10 seconds
+				// Product Rate Limiter
 				.filter(
 						rateLimit(
 								5,
@@ -123,17 +123,49 @@ public class ApiGatewayApplication {
 
 		return route("inventory-route")
 
-				// Incoming request:
-				// /api/inventory/{productId}
 				.route(
 						request -> request.path()
 								.startsWith("/api/inventory/"),
 						http()
 				)
 
-				// Eureka / Load-balanced Inventory Service
+				// Eureka Load Balancer
 				.filter(
 						lb("inventory-service")
+				)
+
+				// Inventory Circuit Breaker
+				.filter(
+						circuitBreaker(
+								"inventoryCircuitBreaker",
+								URI.create("forward:/inventory-fallback")
+						)
+				)
+
+				.build();
+	}
+
+
+	// =========================================================
+	// INVENTORY SERVICE FALLBACK
+	// =========================================================
+
+	@Bean
+	public RouterFunction<ServerResponse> inventoryFallbackRoute() {
+
+		return org.springframework.web.servlet.function.RouterFunctions.route()
+
+				.GET(
+						"/inventory-fallback",
+
+						request -> ServerResponse
+								.status(HttpStatus.SERVICE_UNAVAILABLE)
+								.body("""
+                                        {
+                                          "status": "SERVICE_UNAVAILABLE",
+                                          "message": "Inventory Service is temporarily unavailable."
+                                        }
+                                        """)
 				)
 
 				.build();
@@ -149,21 +181,18 @@ public class ApiGatewayApplication {
 
 		return route("recommendation-route")
 
-				// Incoming request:
-				// /api/recommendations/{productId}
 				.route(
 						request -> request.path()
 								.startsWith("/api/recommendations/"),
 						http()
 				)
 
-				// Eureka / Load-balanced Recommendation Service
+				// Eureka Load Balancer
 				.filter(
 						lb("recommendation-service")
 				)
 
-				// Circuit Breaker catches failure from Recommendation Service
-				// and forwards request to fallback route
+				// Recommendation Circuit Breaker
 				.filter(
 						circuitBreaker(
 								"recommendationCircuitBreaker",
